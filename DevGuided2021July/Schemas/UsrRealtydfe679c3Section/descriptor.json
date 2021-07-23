@@ -1,0 +1,13 @@
+﻿{
+  "Descriptor": {
+    "UId": "e94acc10-be55-44cb-8e57-0ff1eebd72ee",
+    "Name": "UsrRealtydfe679c3Section",
+    "ModifiedOnUtc": "\/Date(1626875391000)\/",
+    "Parent": {
+      "UId": "7912fb69-4fee-429f-8b23-93943c35d66d",
+      "Name": "BaseSectionV2"
+    },
+    "ManagerName": "ClientUnitSchemaManager",
+    "Caption": "Схема раздела: \"Недвижимость\""
+  }
+}
