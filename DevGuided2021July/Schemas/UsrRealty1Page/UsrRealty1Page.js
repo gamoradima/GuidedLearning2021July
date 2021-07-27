@@ -1,7 +1,7 @@
 define("UsrRealty1Page", [], function() {
 	return {
 		entitySchemaName: "UsrRealty",
-		attributes: {
+		attributes: {			
 			"UsrCommissionUSD": {
 				dependencies: [
                     {
@@ -14,7 +14,18 @@ define("UsrRealty1Page", [], function() {
 				lookupListConfig: {
 					columns: ["UsrCommissionCoeff"]
 				}
+			},
+			"TotalRealtyCount": {
+				"dataValueType": this.Terrasoft.DataValueType.INTEGER,
+				"type": this.Terrasoft.ViewModelColumnType.VIRTUAL_COLUMN,
+				"value": -123
 			}
+		},
+		messages: {
+			"MyMessageCode": {
+        		mode: Terrasoft.MessageMode.PTP,
+        		direction: Terrasoft.MessageDirectionType.PUBLISH
+		    },
 		},
 		modules: /**SCHEMA_MODULES*/{}/**SCHEMA_MODULES*/,
 		details: /**SCHEMA_DETAILS*/{
@@ -81,6 +92,11 @@ define("UsrRealty1Page", [], function() {
 			}
 		}/**SCHEMA_BUSINESS_RULES*/,
 		methods: {
+			init: function() {
+ 				this.callParent(arguments);
+    			// Регистрация коллекции сообщений.
+    			this.sandbox.registerMessages(this.messages);
+			},
 			onEntityInitialized: function() {
 				this.callParent(arguments);
 				this.calculateCommissionUSD();
@@ -101,10 +117,14 @@ define("UsrRealty1Page", [], function() {
 					}*/
 					var result = price * coeff;
 					this.set("UsrCommissionUSD", result);
+					this.set("MyVar", 123123123);
 				}
 			},
 			onMyButtonClick: function() {
-				this.console.log("Кнопка была нажата!!!!!!!");
+				var t = this.get("MyVar");
+				
+				this.console.log("Message published.");
+				this.sandbox.publish("MyMessageCode", null, []);
 			},
 			getMyButtonEnabled: function() {
 				var name = this.get("UsrName");
@@ -129,7 +149,59 @@ define("UsrRealty1Page", [], function() {
                 // Для колонки [UsrPriceUSD] добавляется метод-валидатор positiveValueValidator().
                 this.addColumnValidator("UsrPriceUSD", this.positiveValueValidator);
                 this.addColumnValidator("UsrAreaM2", this.positiveValueValidator);
-            }
+            },
+			
+			asyncValidate: function(callback, scope) {
+				this.callParent([
+						function(response) {
+					if (!this.validateResponse(response)) {
+						return;
+					}
+					this.validateRealtyData(function(response) {
+						if (!this.validateResponse(response)) {
+							return;
+						}
+						callback.call(scope, response);
+					}, this);
+				}, this]);
+			},
+
+			validateRealtyData: function(callback, scope) {
+				// create query for server side
+				var esq = this.Ext.create("Terrasoft.EntitySchemaQuery", {
+					rootSchemaName: "UsrRealty"
+				});
+				esq.addAggregationSchemaColumn("UsrPriceUSD", Terrasoft.AggregationType.SUM, "PriceSum");
+				var saleOfferTypeId = "b3f92266-d561-4e8d-bbc9-5100d1c63b4c";
+				var saleFilter = esq.createColumnFilterWithParameter(this.Terrasoft.ComparisonType.EQUAL,
+							"UsrOfferType", saleOfferTypeId);
+				esq.filters.addItem(saleFilter);
+				// run query
+				esq.getEntityCollection(function(response) {
+					if (response.success && response.collection) {
+						var sum = 0;
+						var items = response.collection.getItems();
+						if (items.length > 0) {
+							sum = items[0].get("PriceSum");
+						}
+						var max = 10000000;
+						if (sum > max) {
+							if (callback) {
+								callback.call(this, {
+									success: false,
+									message: "You cannot save, because sum = " + sum + " is bigger than " + max
+								});
+							}
+						} else
+						if (callback) {
+							callback.call(scope, {
+								success: true
+							});
+						}
+					}
+				}, this);
+			},
+
 		},
 		dataModels: /**SCHEMA_DATA_MODELS*/{}/**SCHEMA_DATA_MODELS*/,
 		diff: /**SCHEMA_DIFF*/[
@@ -206,13 +278,13 @@ define("UsrRealty1Page", [], function() {
 						"colSpan": 24,
 						"rowSpan": 1,
 						"column": 0,
-						"row": 4,
+						"row": 5,
 						"layoutName": "ProfileContainer"
 					}
 				},
 				"parentName": "ProfileContainer",
 				"propertyName": "items",
-				"index": 3
+				"index": 6
 			},
 			{
 				"operation": "insert",
@@ -232,6 +304,25 @@ define("UsrRealty1Page", [], function() {
 				"propertyName": "items",
 				"index": 4
 			},
+			{
+				"operation": "insert",
+				"name": "TotalRealtyCountDivName",
+				"values": {
+					"layout": {
+						"colSpan": 24,
+						"rowSpan": 1,
+						"column": 0,
+						"row": 4,
+						"layoutName": "ProfileContainer"
+					},
+					"bindTo": "TotalRealtyCount",
+					"enabled": false,
+					"caption": "Всего записей недвижимости"
+				},
+				"parentName": "ProfileContainer",
+				"propertyName": "items",
+				"index": 5
+			},			
 			{
 				"operation": "insert",
 				"name": "LOOKUPe409491c-943d-4ac1-9a5e-a4e8cea84780",
